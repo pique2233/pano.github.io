@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="A four-stage framework for 360° panorama generation and 3D scene reconstruction.">
+  <meta name="keywords" content="360 panorama, cube map, LoRA, DanceGRPO, Gaussian Splatting">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta property="og:title" content="CubePano360: Seamless 360° Panoramas and 3D Scenes"/>
+  <meta name="twitter:title" content="CubePano360: Seamless 360° Panoramas and 3D Scenes">
+  <meta name="twitter:description" content="A unified pipeline for 360° panorama generation, seam-aware inference and 3D reconstruction.">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <title>PanoGenesis：A Geometry-Aware Diffusion Pipeline for High-Fidelity 360° Panoramas and 3D Scene Recovery</title>
+
+  <!-- 同 DHO 的依赖 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/video_comparison.js"></script>
+  <script src="./static/js/index.js"></script>
+
+  <style>
+    /* 在原有 DHO 的基础上，轻度美化一些块 */
+    .divider {
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+    }
+    .two-col-image img {
+      width: 100%;
+      max-width: 1000px;
+      display: block;
+      margin: 0 auto;
+    }
+    .stage-box {
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+      border: 1px solid #eee;
+    }
+    .result-card {
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+      border: 1px solid #e6e6e6;
+      margin-bottom: 1.5rem;
+      padding: 1.25rem 1.5rem;
+      background: #fafafa;
+    }
+    .result-card img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 0.5rem;
+      border-radius: 8px;
+    }
+    .comparison-figure {
+      max-width: 1100px;
+      margin: 0 auto;
+      border-radius: 18px;
+      border: 1px solid #e0e0e0;
+      background: #f7f7f7;
+      padding: 1.75rem 1.5rem 1.25rem 1.5rem;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.06);
+      text-align: center;
+    }
+    .comparison-figure img,
+    .comparison-figure video {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      margin-bottom: 0.75rem;
+    }
+
+    /* 顶部三张图并排的小样式 */
+    .top-demo-img {
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+      margin-bottom: 0.75rem;
+    }
+    .top-demo-caption {
+      font-size: 0.95rem;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ================= HERO：标题 + 作者 + 链接 ================= -->
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">
+            PanoGenesis：A Geometry-Aware Diffusion Pipeline for High-Fidelity 360° Panoramas and 3D Scene Recovery
+          </h1>
+
+          <!-- Authors -->
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              Ziwen Li<sup>1,*</sup>,</span>
+            <span class="author-block">
+              Xianfeng Han<sup>1,†</sup></span>
+          </div>
+
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <sup>1</sup>SouthWest University<br>
+            </span>
+            <span class="eql-cntrb">
+              <small><br><sup>*</sup>First Author, <sup>†</sup>Corresponding Author</small>
+            </span><br>
+          </div>
+
+          <div class="is-size-3 has-text-weight-bold">Arxiv 2026</div>
+
+          <!-- Publication Links -->
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="" target="_blank"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="" target="_blank"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="" target="_blank"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="" target="_blank"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="fas fa-database"></i>
+                  </span>
+                  <span>Data</span>
+                </a>
+              </span>
+            </div>
+          </div>
+          <!-- End of Publication Links -->
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 顶部三图并排 ================= -->
+<section class="hero is-light is-small">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-variable is-4">
+        <div class="column">
+          <figure class="image">
+            <img class="top-demo-img" src="./static/images/pano_demo_1.png" alt="Demo panorama 1">
+          </figure>
+          <p class="has-text-centered top-demo-caption">
+            Generated 360° Panorama (Living Room)
+          </p>
+        </div>
+        <div class="column">
+          <figure class="image">
+            <img class="top-demo-img" src="./static/images/pano_demo_2.png" alt="Demo panorama 2">
+          </figure>
+          <p class="has-text-centered top-demo-caption">
+            Generated 360° Panorama (Corridor)
+          </p>
+        </div>
+        <div class="column">
+          <figure class="image">
+            <img class="top-demo-img" src="./static/images/pano_demo_3.png" alt="3DGS reconstruction">
+          </figure>
+          <p class="has-text-centered top-demo-caption">
+            3D Gaussian Splatting from Generated Panorama
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero is-light is-small">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-variable is-4">
+        <div class="column">
+          <figure class="image">
+            <img class="top-demo-img" src="./static/images/depth2.png" alt="Demo panorama 1">
+          </figure>
+          <p class="has-text-centered top-demo-caption">
+            Generated 360° Panorama (Living Room)
+          </p>
+        </div>
+        <div class="column">
+          <figure class="image">
+            <img class="top-demo-img" src="./static/images/depth2.png" alt="Demo panorama 2">
+          </figure>
+          <p class="has-text-centered top-demo-caption">
+            Generated 360° Panorama (Corridor)
+          </p>
+        </div>
+        <div class="column">
+          <figure class="image">
+            <img class="top-demo-img" src="./static/images/depth1.png" alt="3DGS reconstruction">
+          </figure>
+          <p class="has-text-centered top-demo-caption">
+            3D Gaussian Splatting from Generated Panorama
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <h2 class="subtitle has-text-centered">
+        We propose a four-stage pipeline for text-driven 360° panorama generation:
+        prompt enhancement, LoRA-based panoramic diffusion with cube supervision and DanceGRPO,
+        seam-aware post-processing, and depth-driven 3D reconstruction.
+      </h2>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ABSTRACT ================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            Due to the inherent distortion of equirectangular projection, generating high-quality 360° panoramas from text is challenging,
+            especially near polar regions and panorama seams. We propose a four-stage pipeline for 360° panorama generation and 3D scene
+            reconstruction. Stage&nbsp;1 performs multi-round prompt generation and enhancement with LLMs (Qwen / GPT-4o), constrained to a
+            compact token budget and scored by a vision-language model. Stage&nbsp;2 fine-tunes Stable Diffusion 2 in ERP space with LoRA
+            applied only on <code>W<sub>v</sub>/W<sub>o</sub></code>, introduces a cube-projected MSE and cyclic-consistency loss, and further
+            refines the model with DanceGRPO using CLIP, HPSv2, and ImageReward. Stage&nbsp;3 deploys a plug-and-play seam-aware convolution
+            plugin that enforces horizontal periodicity for any UNet-based diffusion model, significantly alleviating seam artifacts at 0°/360°.
+            Finally, Stage&nbsp;4 estimates dense depth via DepthAnythingV2 / UniK3D, converts depth into Euclidean distances and per-pixel ray
+            directions, and feeds <code>RGB + distance.npy + rays.npy</code> into a 3D Gaussian Splatting / mesh reconstruction pipeline.
+            Experiments on the Insta360-Research Matterport3D_polished dataset demonstrate that our method produces seamless panoramas and
+            geometrically consistent 3D scenes.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 总体流程图 ================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <hr class="divider" />
+        <h2 class="title is-3">Method Overview</h2>
+        <div class="content has-text-justified">
+          <p>
+            We decompose the task into four stages: Stage&nbsp;1 prompt generation &amp; enhancement, Stage&nbsp;2 panorama generation with
+            LoRA + Cube Loss + DanceGRPO, Stage&nbsp;3 seam-aware post-processing, and Stage&nbsp;4 depth estimation &amp; 3D reconstruction.
+          </p>
+        </div>
+        <div class="two-col-image">
+          <!-- 这里放你的总流程图 -->
+          <img src="./static/images/pipeline_overview.png" alt="Pipeline Overview">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 四个 Stage 详细 ================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <hr class="divider" />
+    <h2 class="title is-3 has-text-centered">Four-Stage Pipeline</h2>
+
+    <div class="columns is-multiline">
+      <!-- Stage 1 -->
+      <div class="column is-half">
+        <div class="box stage-box">
+          <h3 class="title is-4">Stage 1: Prompt Generation &amp; Enhancement</h3>
+          <p>
+            Inspired by DreamScene360, we adopt a multi-round self-refinement strategy with Qwen / GPT-4o.
+            Starting from a short user prompt such as “a spacious, well-lit interior space”, the LLM performs:
+            (1) spatial expansion, (2) detail description, and (3) style polishing, while enforcing a strict token limit (≤ 29 tokens).
+            Multiple structured prompts are then scored by a vision-language model using:
+          </p>
+          <p class="has-text-centered">
+            <code>Score = λ₁ · CLIPScore + λ₂ · SCS</code>
+          </p>
+          <p>
+            The highest scoring prompt is used to drive the panorama generator.
+          </p>
+        </div>
+      </div>
+
+      <!-- Stage 2 -->
+      <div class="column is-half">
+        <div class="box stage-box">
+          <h3 class="title is-4">Stage 2: Panorama Generation with LoRA &amp; DanceGRPO</h3>
+          <p>
+            We fine-tune Stable Diffusion 2 in ERP format. Following UniPano, we only attach LoRA to the attention matrices
+            <code>W<sub>v</sub>/W<sub>o</sub></code>, which are most sensitive to ERP stretching and spherical geometry.
+            To avoid the two-stage stretching observed in PanoFusion, we introduce a <strong>Cube Loss</strong>: ERP noise predictions are
+            projected onto a cube map, and we apply face-wise MSE plus cyclic-consistency across adjacent faces.
+          </p>
+          <p>
+            On top of supervised training, we employ DanceGRPO for RL fine-tuning. The LoRA-augmented SD2 and its prompts are fed into
+            DanceGRPO, where each cube face or FoV view is scored with CLIPScore, HPSv2, and ImageReward, encouraging global coherence
+            and local realism simultaneously.
+          </p>
+        </div>
+      </div>
+
+      <!-- Stage 3 -->
+      <div class="column is-half">
+        <div class="box stage-box">
+          <h3 class="title is-4">Stage 3: Seam-Aware Post-Processing Plugin</h3>
+          <p>
+            Even with careful training, UNet-based diffusion models tend to produce visible seams at the horizontal wrap-around
+            (0°/360°) because standard <code>Conv2d</code> uses zero or reflect padding instead of periodic boundary conditions.
+            We design a plug-and-play plugin that wraps all internal <code>Conv2d</code> layers and overrides <code>_conv_forward</code>.
+          </p>
+          <p>
+            For padding <code>(p<sub>h</sub>, p<sub>w</sub>)</code>, we tile the feature map horizontally by concatenating
+            <code>[right p<sub>w</sub> columns | x | left p<sub>w</sub> columns]</code> and perform convolution with vertical padding only.
+            This realizes periodic padding in longitude while preserving the original UNet topology and feature resolution.
+            The plugin can be applied at inference time to any UNet-based diffusion model (e.g., Stable Diffusion variants).
+          </p>
+        </div>
+      </div>
+
+      <!-- Stage 4 -->
+      <div class="column is-half">
+        <div class="box stage-box">
+          <h3 class="title is-4">Stage 4: Depth Estimation &amp; 3D Reconstruction</h3>
+          <p>
+            Finally, we estimate monocular depth for the generated panoramas using DepthAnythingV2 / UniK3D.
+            We convert depth to Euclidean distance and per-pixel unit ray direction, and store them as:
+          </p>
+          <p class="has-text-centered">
+            <code>RGB + distance.npy + rays.npy → 3D Gaussian Splatting / Mesh</code>
+          </p>
+          <p>
+            These signals are fed into a 3D Gaussian Splatting or mesh reconstruction pipeline, enabling novel-view synthesis,
+            point clouds, and mesh visualization for the generated scenes.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 数据集 ================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <hr class="divider" />
+        <h2 class="title is-3">Dataset</h2>
+        <div class="content has-text-justified">
+          <p>
+            We train our models on the
+            <a href="https://huggingface.co/datasets/Insta360-Research/Matterport3D_polished" target="_blank">
+              Insta360-Research / Matterport3D_polished
+            </a>
+            dataset, which contains around 10k polished indoor panoramas.
+            Compared to the raw Matterport3D dataset, the polished version provides cleaner ERP images and better usability for
+            supervised training and RL-based fine-tuning.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 定性结果（垂直三块：Pano / Depth / 3DGS） ================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <hr class="divider" />
+        <h2 class="title is-3">Qualitative Results</h2>
+        <div class="content has-text-justified">
+          <p>
+            We present representative examples of generated panoramas, estimated depth, and 3D reconstructions.
+            The three results are arranged vertically: ERP panorama, depth estimation, and 3D Gaussian Splatting / mesh.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="columns is-centered">
+      <div class="column is-two-thirds">
+        <!-- 1: ERP Panorama -->
+        <div class="result-card has-text-centered">
+          <img src="./static/images/qual_erp.png" alt="ERP panorama">
+          <p><strong>Generated ERP Panorama</strong></p>
+        </div>
+
+        <!-- 2: Depth Estimation -->
+        <div class="result-card has-text-centered">
+          <img src="./static/images/qual_depth.png" alt="Depth estimation">
+          <p><strong>Depth Estimation (DepthAnythingV2 / UniK3D)</strong></p>
+        </div>
+
+        <!-- 3: 3DGS / Mesh -->
+        <div class="result-card has-text-centered">
+          <img src="./static/images/qual_3dgs.png" alt="3D Gaussian Splatting / Mesh">
+          <p><strong>3D Gaussian Splatting / Mesh Reconstruction</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 指标对比 ================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <hr class="divider" />
+        <h2 class="title is-3">Quantitative Comparison</h2>
+        <div class="content has-text-justified">
+          <p>
+            We evaluate our method using FID, Inception Score, CLIPScore, and KID on the test splits.
+            Fill in the numbers once experiments are done.
+          </p>
+        </div>
+
+        <table class="table is-striped is-hoverable is-fullwidth">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>FID ↓</th>
+              <th>IS ↑</th>
+              <th>CLIPScore ↑</th>
+              <th>KID (×10<sup>-3</sup>) ↓</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>DreamScene360</td>
+              <td>–</td><td>–</td><td>–</td><td>–</td>
+            </tr>
+            <tr>
+              <td>UniPano (ICCV 2025)</td>
+              <td>–</td><td>–</td><td>–</td><td>–</td>
+            </tr>
+            <tr>
+              <td>DIT360 / Flux-style DIT</td>
+              <td>–</td><td>–</td><td>–</td><td>–</td>
+            </tr>
+            <tr>
+              <td><strong>Ours (LoRA + CubeLoss)</strong></td>
+              <td><strong>–</strong></td><td><strong>–</strong></td>
+              <td><strong>–</strong></td><td><strong>–</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Ours (LoRA + CubeLoss + DanceGRPO)</strong></td>
+              <td><strong>–</strong></td><td><strong>–</strong></td>
+              <td><strong>–</strong></td><td><strong>–</strong></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="is-size-7">
+          Metric implementations follow TorchMetrics:
+          FID, IS, CLIPScore, and KID.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= Ablation ================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <hr class="divider" />
+        <h2 class="title is-3">Ablation Study</h2>
+        <div class="content has-text-justified">
+          <p>
+            We analyze the contribution of prompt enhancement, LoRA on <code>W<sub>v</sub>/W<sub>o</sub></code>, Cube Loss,
+            cyclic consistency, and the seam-aware plugin.
+          </p>
+        </div>
+
+        <table class="table is-bordered is-fullwidth">
+          <thead>
+            <tr>
+              <th>Variant</th>
+              <th>Prompt Enh.</th>
+              <th>LoRA W<sub>v</sub>/W<sub>o</sub></th>
+              <th>Cube Loss</th>
+              <th>Cyclic Cons.</th>
+              <th>Seam Plugin</th>
+              <th>FID ↓</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Baseline SD2 (ERP)</td>
+              <td>✗</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td>–</td>
+            </tr>
+            <tr>
+              <td>+ Prompt Enhancement</td>
+              <td>✓</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td>–</td>
+            </tr>
+            <tr>
+              <td>+ LoRA (W<sub>v</sub>/W<sub>o</sub>)</td>
+              <td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>✗</td><td>–</td>
+            </tr>
+            <tr>
+              <td>+ Cube Loss &amp; Cyclic</td>
+              <td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✗</td><td>–</td>
+            </tr>
+            <tr>
+              <td><strong>Full (Ours)</strong></td>
+              <td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><strong>–</strong></td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 最终大对比图 ================= -->
+<section class="section">
+  <div class="container is-max-desktop">
+    <hr class="divider" />
+    <h2 class="title is-3 has-text-centered">Final Visual Comparison</h2>
+    <div class="content has-text-justified">
+      <p class="has-text-centered">
+        We show a large-scale visual comparison between our method and baselines (e.g., UniPano, DIT360).
+        Replace the placeholder below with your final high-resolution comparison figure or video.
+      </p>
+    </div>
+
+    <div class="comparison-figure">
+      <!-- 你说的“单独一个 div，很大，放最后、居中”的对比图 -->
+      <img src="./static/images/compare_ours_vs_baselines.png"
+           alt="Comparison between our method and baselines">
+
+      <!-- 或改成视频：
+      <video width="1000" autoplay muted loop playsinline>
+        <source src="./Videos/compare/compare_baseline.mp4" type="video/mp4">
+      </video>
+      -->
+
+      <p>
+        <strong>Left:</strong> Ours (LoRA + CubeLoss + DanceGRPO + Seam Plugin) &nbsp;&nbsp;
+        <strong>Right:</strong> Baseline (UniPano / DIT360 / others)
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="content has-text-centered">
+    <p>
+      Template adapted from the DHO project page.<br>
+      Feel free to modify this page for your own research project.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
